@@ -30,7 +30,7 @@ def upload_to_drive(local_file_path, drive_folder_id):
         print("🚀 بدأت عملية رفع الملف إلى Google Drive")
         st.success("🚀 بدأت عملية رفع الملف إلى Google Drive")
 
-        credentials_info = json.loads(st.secrets["gdrive_credentials"])
+        credentials_info = st.secrets["gdrive_credentials"]
         creds = service_account.Credentials.from_service_account_info(
             credentials_info,
             scopes=["https://www.googleapis.com/auth/drive"]
@@ -56,7 +56,7 @@ def upload_to_drive(local_file_path, drive_folder_id):
             service.files().create(body=file_metadata, media_body=media, fields='id').execute()
 
     except Exception as e:
-        st.error(f"❌ فشل رفع الملف إلى Google Drive: {e}")
+        st.exception(e)  # <-- هذا يعرض الخطأ الحقيقي بشكل كامل
         print(f"❌ فشل رفع الملف إلى Google Drive: {e}")
 
 def save_data(df):
@@ -268,7 +268,7 @@ if menu == "إضافة موظف":
                 save_data(data)
                 st.success("✅ تم حفظ الموظف بنجاح، سيتم تحديث الصفحة...")
                 # تأخير بسيط حتى يرى المستخدم الرسالة
-                time.sleep(1)
+                time.sleep(5)
                 # تفريغ session_state قبل التحديث
                 for key in list(st.session_state.keys()):
                     if key.startswith("add_") or key == "add_confirm":
