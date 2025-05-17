@@ -25,6 +25,40 @@ def load_data():
             "الحوافز", "الاستقطاعات", "الراتب الصافي"
         ])
 
+def upload_to_drive(local_file_path, drive_folder_id):
+    try:
+        print("🚀 بدأت عملية رفع الملف إلى Google Drive")
+        st.success("🚀 بدأت عملية رفع الملف إلى Google Drive")
+
+        credentials_info = json.loads(st.secrets["gdrive_credentials"])
+        creds = service_account.Credentials.from_service_account_info(
+            credentials_info,
+            scopes=["https://www.googleapis.com/auth/drive"]
+        )
+
+        service = build('drive', 'v3', credentials=creds)
+
+        file_metadata = {
+            'name': 'employees.csv',
+            'parents': [drive_folder_id]
+        }
+
+        media = MediaFileUpload(local_file_path, mimetype='text/csv')
+
+        query = f"name='employees.csv' and '{drive_folder_id}' in parents"
+        results = service.files().list(q=query, spaces='drive', fields='files(id)').execute()
+        files = results.get('files', [])
+
+        if files:
+            file_id = files[0]['id']
+            service.files().update(fileId=file_id, media_body=media).execute()
+        else:
+            service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+
+    except Exception as e:
+        st.error(f"❌ فشل رفع الملف إلى Google Drive: {e}")
+        print(f"❌ فشل رفع الملف إلى Google Drive: {e}")
+
 def save_data(df):
     df.to_csv(DATA_FILE, index=False, encoding='utf-8-sig')
 
@@ -373,36 +407,3 @@ elif menu == "تنبيهات المستندات":
         styled_alerts = alerts_display[["الاسم", "تاريخ انتهاء الهوية", "تاريخ انتهاء رخصة العمل", "تاريخ انتهاء كرت السائق"]].style\
             .applymap(color_expiry, subset=["تاريخ انتهاء الهوية", "تاريخ انتهاء رخصة العمل", "تاريخ انتهاء كرت السائق"])
         st.dataframe(styled_alerts, use_container_width=True)
-def upload_to_drive(local_file_path, drive_folder_id):
-    try:
-        print("🚀 بدأت عملية رفع الملف إلى Google Drive")
-        st.success("🚀 بدأت عملية رفع الملف إلى Google Drive")
-
-        credentials_info = json.loads(st.secrets["gdrive_credentials"])
-        creds = service_account.Credentials.from_service_account_info(
-            credentials_info,
-            scopes=["https://www.googleapis.com/auth/drive"]
-        )
-
-        service = build('drive', 'v3', credentials=creds)
-
-        file_metadata = {
-            'name': 'employees.csv',
-            'parents': [drive_folder_id]
-        }
-
-        media = MediaFileUpload(local_file_path, mimetype='text/csv')
-
-        query = f"name='employees.csv' and '{drive_folder_id}' in parents"
-        results = service.files().list(q=query, spaces='drive', fields='files(id)').execute()
-        files = results.get('files', [])
-
-        if files:
-            file_id = files[0]['id']
-            service.files().update(fileId=file_id, media_body=media).execute()
-        else:
-            service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-
-    except Exception as e:
-        st.error(f"❌ فشل رفع الملف إلى Google Drive: {e}")
-        print(f"❌ فشل رفع الملف إلى Google Drive: {e}")
