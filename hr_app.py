@@ -89,13 +89,19 @@ def log_event(action, details):
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     import csv
 
-    # تأكد من أن ملف اللوج يتم فتحه في وضع الإلحاق دائمًا
     with open(LOG_FILE, "a", newline="", encoding="utf-8-sig") as log_file:
         writer = csv.writer(log_file)
         writer.writerow([timestamp, action, details])
+
+    # تأكيد عملية الحفظ
+    st.write(f"📝 تم تسجيل الحدث: {action} - {details}")
+
     # رفع ملف اللوج إلى Google Drive
-    folder_id = "1fCNL0oB95GB1wCDHLwqZDCFfEte8XxCg"  # نفس المجلد المستخدم
+    folder_id = "1fCNL0oB95GB1wCDHLwqZDCFfEte8XxCg"
+    st.write("🚀 جاري رفع ملف الأحداث إلى Google Drive...")
     upload_to_drive(LOG_FILE, folder_id)
+    st.success("✅ تم رفع ملف الأحداث إلى Google Drive بنجاح.")
+
 
 # واجهة البرنامج
 
