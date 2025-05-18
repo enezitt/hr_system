@@ -98,7 +98,6 @@ def log_event(action, details):
     upload_to_drive(LOG_FILE, folder_id)
 
 # واجهة البرنامج
-st.set_page_config(page_title="نظام شؤون الموظفين", layout="wide")
 
 # تغيير لون خلفية الصفحة إلى لون فاتح
 st.markdown("""
