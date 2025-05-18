@@ -12,6 +12,7 @@ import streamlit.components.v1 as components
 import time
 
 DATA_FILE = "employees.csv"
+LOG_FILE = "events.csv"
 
 # تحميل البيانات
 def load_data():
@@ -26,6 +27,8 @@ def load_data():
         ])
 
 def upload_to_drive(local_file_path, drive_folder_id):
+    import requests
+    from googleapiclient.errors import HttpError
     try:
         print("🚀 بدأت عملية رفع الملف إلى Google Drive")
         st.success("🚀 بدأت عملية رفع الملف إلى Google Drive")
@@ -38,25 +41,34 @@ def upload_to_drive(local_file_path, drive_folder_id):
 
         service = build('drive', 'v3', credentials=creds)
 
+        # تحديد اسم الملف بناءً على نوعه
+        base_name = "employees" if "employees" in local_file_path else "events"
+        # استخدام اسم ثابت للملف بدلاً من إضافة طابع زمني
+        file_name = base_name + ".csv"
+
         file_metadata = {
-            'name': 'employees.csv',
+            'name': file_name,
             'parents': [drive_folder_id]
         }
 
         media = MediaFileUpload(local_file_path, mimetype='text/csv')
 
-        query = f"name='employees.csv' and '{drive_folder_id}' in parents"
+        # التحقق من وجود ملف بنفس الاسم في Google Drive
+        query = f"name='{file_name}' and '{drive_folder_id}' in parents"
         results = service.files().list(q=query, spaces='drive', fields='files(id)').execute()
         files = results.get('files', [])
 
         if files:
+            # إذا كان الملف موجودًا، يتم تحديثه
             file_id = files[0]['id']
             service.files().update(fileId=file_id, media_body=media).execute()
         else:
+            # إذا لم يكن الملف موجودًا، يتم إنشاؤه
             service.files().create(body=file_metadata, media_body=media, fields='id').execute()
 
     except Exception as e:
-        st.exception(e)  # <-- هذا يعرض الخطأ الحقيقي بشكل كامل
+        st.error(f"❌ فشل رفع الملف إلى Google Drive: {e}")
+        print(f"❌ فشل رفع الملف إلى Google Drive: {e}")
         print(f"❌ فشل رفع الملف إلى Google Drive: {e}")
 
 def save_data(df):
@@ -68,6 +80,19 @@ def save_data(df):
 
 def clear_form():
     st.session_state.clear()
+
+def log_event(action, details):
+    """تسجيل الأحداث في ملف لوج محلي."""
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    import csv
+
+    # تأكد من أن ملف اللوج يتم فتحه في وضع الإلحاق دائمًا
+    with open(LOG_FILE, "a", newline="", encoding="utf-8-sig") as log_file:
+        writer = csv.writer(log_file)
+        writer.writerow([timestamp, action, details])
+    # رفع ملف اللوج إلى Google Drive
+    folder_id = "1fCNL0oB95GB1wCDHLwqZDCFfEte8XxCg"  # نفس المجلد المستخدم
+    upload_to_drive(LOG_FILE, folder_id)
 
 # واجهة البرنامج
 st.set_page_config(page_title="نظام شؤون الموظفين", layout="wide")
@@ -266,6 +291,10 @@ if menu == "إضافة موظف":
                 })
                 data = pd.concat([data, new_row], ignore_index=True)
                 save_data(data)
+
+                # تسجيل الحدث في ملف اللوج
+                log_event("إضافة موظف", f"تمت إضافة الموظف: {name} برقم وظيفي: {job_id}")
+
                 st.success("✅ تم حفظ الموظف بنجاح، سيتم تحديث الصفحة...")
                 # تأخير بسيط حتى يرى المستخدم الرسالة
                 time.sleep(5)
@@ -327,6 +356,10 @@ elif menu == "تعديل موظف":
                         job_title, base_salary, base_salary
                     ]
                     save_data(data)
+
+                    # تسجيل الحدث في ملف اللوج
+                    log_event("تعديل موظف", f"تم تعديل بيانات الموظف: {selected_name} إلى الاسم الجديد: {name}")
+
                     st.success("✅ تم تعديل بيانات الموظف")
                     st.rerun()
 
@@ -358,6 +391,10 @@ elif menu == "حذف موظف":
                 st.session_state['delete_confirm'] = False
                 data = data[data["الاسم"] != selected_name]
                 save_data(data)
+
+                # تسجيل الحدث في ملف اللوج
+                log_event("حذف موظف", f"تم حذف الموظف: {selected_name}")
+
                 st.success(f"✅ تم حذف {selected_name}")
                 st.rerun()
 
